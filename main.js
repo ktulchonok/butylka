@@ -1,6 +1,6 @@
 var Bot = require('slackbots');
+var dictionary = require('./public.dictionary');
 
-// create a bot
 var settings = {
     token: process.env.SLACK_TOKEN,
     name: 'butylka'
@@ -10,26 +10,40 @@ const params = {
     icon_emoji: ':butylka:',
     link_names: 1
 };
-const lib = {
-    'и мне возьмите': ['пиво', 'сиги' , 'cиги'],
-    'поехали': ['караоке'],
-    'о, дырки': ['бар', 'тру', 'тихий'],
-    'садись, братишка': ['бутылка'],
-    'в ногах правды нет': ['на бутылку'],
-    'я готова': ['бухать'],
-}
-bot.on('start', function() {
-    bot.postMessageToChannel('general', 'я проснулся!', params);
-    // bot.postMessageToUser('bulldoglord', 'я проснулся!', params);
+
+bot.on('start', function () {
+    console.log('утро доброе!');
+    // bot.postMessageToChannel('general', 'го бухать!', params);
+    // bot.postMessageToUser('deus', 'ПОЦ!', params);
+    // bot.postMessage('D85NY8D7D', 'ты ПОЦ!', params)
+    // bot.postMessageToChannel('roomster', '@deus ПОЦ!', params);
     // bot.postMessageToGroup('some-private-group', 'hello group chat!');
 });
 
-bot.on('message', function(data) {
+bot.on('message', async function (data) {
     // all ingoing events https://api.slack.com/rtm
-    if (data.type !== 'message') return;
+    if (data.type === 'hello' ||
+        data.type !== 'message' ||
+        data.subtype ||
+        data.username === bot.name)
+        return;
     const text = data.text.toLowerCase();
-
-    const find = Object.keys(lib).find(k => lib[k].some(i => text.includes(i)));
-    if (find && data.subtype !== 'message_deleted') 
+    let find = Object.keys(dictionary).find(k =>
+        dictionary[k].some(i => {
+            const reg = new RegExp(`(^\|[ \n\r\t.,'\"\+!?-]+)(${i})([ \n\r\t.,'\"\+!?-]+\|$)`, "gu");
+            return text.search(reg) !== -1;
+        })
+    );
+    if (find) {
+        try {
+            const {
+                members
+            } = await bot.getUsers();
+            const user = members.find(u => u.id === data.user);
+            if (user) find = '@' + user.name + ' ' + find;
+        } catch (e) {
+            console.error('ERROR: ', e)
+        }
         bot.postMessage(data.channel, find, params);
+    }
 });
